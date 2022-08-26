@@ -1,0 +1,75 @@
+# define new loss function
+import keras.backend as K
+
+
+tf.config.run_functions_eagerly(True)
+tf.data.experimental.enable_debug_mode()
+
+def custom_loss(y_true, y_pred):
+    # calculating squared difference between target and predicted values
+    
+      # (batch_size, 2)
+
+    dphi_1_p = []
+    dphi_2_p = []
+    dphi_1_t = []
+    dphi_2_t = []
+    eta_1_p = []
+    eta_2_p = []
+    eta_1_t = []
+    eta_2_t = []
+    for i in y_pred:
+    #print(type(y_pred[0].numpy()),len(y_pred))
+        E_1_pred = vector.obj(x=i[0].numpy(),y=i[1].numpy(),z=i[2].numpy()).mag
+        #print(E_1_pred)
+        E_2_pred = vector.obj(x=i[3].numpy(),y=i[4].numpy(),z=i[5].numpy()).mag
+
+        delphi_1_pred = vector.obj(x=i[0].numpy(),y=i[1].numpy(),z=i[2].numpy(),E=E_1_pred).rapidity
+        delphi_2_pred = vector.obj(x=i[3].numpy(),y=i[4].numpy(),z=i[5].numpy(),E=E_2_pred).rapidity
+        
+        eta_1_pred = np.arcsinh(i[2]/np.sqrt(i[0]**2+i[1]**2))
+        eta_2_pred = np.arcsinh(i[5]/np.sqrt(i[3]**2+i[4]**2))
+        #print(delphi_1_pred)
+        
+        dphi_1_p.append(delphi_1_pred)
+        dphi_2_p.append(delphi_2_pred)
+        eta_1_p.append(eta_1_pred)
+        eta_2_p.append(eta_2_pred)
+    
+    for k in y_true:
+        
+        E_1_true = vector.obj(x=k[0].numpy(),y=k[1].numpy(),z=k[2].numpy()).mag
+        E_2_true = vector.obj(x=k[3].numpy(),y=k[4].numpy(),z=k[5].numpy()).mag
+        
+        delphi_1_true = vector.obj(x=k[0].numpy(),y=k[1].numpy(),z=k[2],E=E_1_true).rapidity
+        delphi_2_true = vector.obj(x=k[3].numpy(),y=k[4].numpy(),z=k[5],E=E_2_true).rapidity
+        
+        eta_1_true = np.arcsinh(k[2]/np.sqrt(k[0]**2+k[1]**2))
+        eta_2_true = np.arcsinh(k[5]/np.sqrt(k[3]**2+k[4]**2))
+        
+        dphi_1_t.append(delphi_1_true)
+        dphi_2_t.append(delphi_2_true)
+        eta_1_t.append(eta_1_true)
+        eta_2_t.append(eta_2_true)
+
+
+    d = np.stack([dphi_1_p,dphi_2_p,eta_1_p,eta_2_p],-1).reshape(batch_size,4)
+    #print(d)
+    d_true = np.stack([dphi_1_t,dphi_2_t,eta_1_t,eta_2_t],-1).reshape(batch_size,4)
+    #print(type(delphi_1_true),delphi_1_true)
+    
+    y_pred = tf.concat([y_pred,d],1)
+    y_true = tf.concat([y_true,d_true],1)
+    
+    #print(y_pred)
+    loss = K.square(y_pred - y_true)
+    #print(loss)
+    # multiplying the values with weights along batch dimension
+    loss = loss * [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.7, 0.7, 0.5, 0.5]          # (batch_size, 2)
+    loss = replacenan(loss)
+    # summing both loss values along batch dimension 
+    loss = K.sum(loss, axis=1)        # (batch_size,)
+    #print(loss)
+    # calculate loss, using y_pred
+        
+    return loss
